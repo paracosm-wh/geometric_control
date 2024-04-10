@@ -5,3 +5,4 @@ px4_ros_com
 RapidQuadrocopterTrajectories-master
 rpg_mpc
 traj_opt
+geometric_control/cmake-build-debug
