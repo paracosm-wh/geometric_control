@@ -1,0 +1,18 @@
+geometric_controller_node:
+  ros__parameters:
+    max_acc: 10.0
+    ctrl_mode: 2
+    feedthrough_enable: false
+    # Params specific for copter
+    attctrl_constant: 0.3
+    normalizedthrust_constant: 0.06
+    normalizedthrust_offset: 0.1
+    Kp_x: 5.0
+    Kp_y: 5.0
+    Kp_z: 10.0
+    Kv_x: 4.0
+    Kv_y: 4.0
+    Kv_z: 10.0
+    init_pos_x: 0.0
+    init_pos_y: 0.0
+    init_pos_z: 3.0

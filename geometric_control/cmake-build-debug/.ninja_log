@@ -1,0 +1,5 @@
+# ninja log v5
+1	1317	1697787868546927710	CMakeFiles/geometric_control.dir/src/nonlinear_attitude_control.cpp.o	179a09ae65e4fcca
+1	1111	1702868883946886808	build.ninja	5c803ccf8e8c8b00
+1	1588	1697787868818939398	CMakeFiles/geometric_control.dir/src/jerk_tracking_control.cpp.o	56db0bfc988880ba
+0	1521	1697787868750936476	CMakeFiles/geometric_control.dir/src/nonlinear_geometric_control.cpp.o	1dbe03807c724713

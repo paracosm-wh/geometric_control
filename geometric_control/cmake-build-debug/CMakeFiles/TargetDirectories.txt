@@ -1,0 +1,11 @@
+/home/itr-wh/px4_ros2_ws/src/geometric_control/cmake-build-debug/CMakeFiles/uninstall.dir
+/home/itr-wh/px4_ros2_ws/src/geometric_control/cmake-build-debug/CMakeFiles/geometric_control_uninstall.dir
+/home/itr-wh/px4_ros2_ws/src/geometric_control/cmake-build-debug/CMakeFiles/geometric_control.dir
+/home/itr-wh/px4_ros2_ws/src/geometric_control/cmake-build-debug/CMakeFiles/geometric_controller_node.dir
+/home/itr-wh/px4_ros2_ws/src/geometric_control/cmake-build-debug/CMakeFiles/test.dir
+/home/itr-wh/px4_ros2_ws/src/geometric_control/cmake-build-debug/CMakeFiles/edit_cache.dir
+/home/itr-wh/px4_ros2_ws/src/geometric_control/cmake-build-debug/CMakeFiles/rebuild_cache.dir
+/home/itr-wh/px4_ros2_ws/src/geometric_control/cmake-build-debug/CMakeFiles/list_install_components.dir
+/home/itr-wh/px4_ros2_ws/src/geometric_control/cmake-build-debug/CMakeFiles/install.dir
+/home/itr-wh/px4_ros2_ws/src/geometric_control/cmake-build-debug/CMakeFiles/install/local.dir
+/home/itr-wh/px4_ros2_ws/src/geometric_control/cmake-build-debug/CMakeFiles/install/strip.dir
