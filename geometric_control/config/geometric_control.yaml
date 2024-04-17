@@ -2,6 +2,11 @@ geometric_controller_node:
   ros__parameters:
     max_acc: 10.0
     ctrl_mode: 2
+    # Geofence parameters
+    geofence_enable: false
+    geofence_x: 3.0
+    geofence_y: 3.0
+    geofence_z: 2.5
     feedthrough_enable: false
     # Params specific for copter
     attctrl_constant: 0.3

@@ -126,6 +126,7 @@ private:
 
     // Timer:
     rclcpp::TimerBase::SharedPtr cmdLoop_timer_;
+    rclcpp::TimerBase::SharedPtr input_timer_;
 
 //    rclcpp::TimerBase::SharedPtr statusLoop_timer_;
 
@@ -149,6 +150,8 @@ private:
     void mavtratesCallback(const px4_msgs::msg::VehicleAngularVelocity::UniquePtr &msg);
 
     void cmdloopCallback();
+
+    void inputCallback();
 
 //    void statusloopCallback();
 
@@ -198,10 +201,12 @@ private:
 
     geometry_msgs::msg::PoseStamped vector3d2PoseStampedMsg(Eigen::Vector3d &position, Eigen::Vector4d &orientation);
 
+    std::size_t offboard_setpoint_counter_;
     // Parameter:
     std::string mav_name_{};
     int ctrl_mode_{};
     bool sim_enable_{};
+    float geofence_x, geofence_y, geofence_z;
     bool velocity_yaw_{};
     double max_fb_acc_{};
     double mavYaw_{};
@@ -210,6 +215,7 @@ private:
     double norm_thrust_const_{}, norm_thrust_offset_{};
     double Kpos_x_{}, Kpos_y_{}, Kpos_z_{}, Kvel_x_{}, Kvel_y_{}, Kvel_z_{};
     double initTargetPos_x_{}, initTargetPos_y_{}, initTargetPos_z_{};
+    std::vector<double> initTargetPos_;
     int posehistory_window_{};
 
     bool fail_detec_{false};
@@ -237,5 +243,6 @@ private:
     bool received_home_pose{};
     std::shared_ptr<Control> controller_;
 };
+
 
 #endif

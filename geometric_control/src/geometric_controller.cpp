@@ -2,6 +2,7 @@
 #include "geometric_control/jerk_tracking_control.h"
 #include "geometric_control/nonlinear_attitude_control.h"
 #include "geometric_control/nonlinear_geometric_control.h"
+#include <sys/select.h>
 
 using namespace Eigen;
 
@@ -13,7 +14,7 @@ geometricCtrl::geometricCtrl() : Node("geometric_controller") {
     DeclareParams();
     GetParams();
     PrintParams();
-
+    offboard_setpoint_counter_ = 0;
     referenceSub_ = this->create_subscription<geometry_msgs::msg::TwistStamped>(
             "reference/setpoint", 10, std::bind(&geometricCtrl::targetCallback, this, std::placeholders::_1));
 
@@ -96,7 +97,7 @@ geometricCtrl::geometricCtrl() : Node("geometric_controller") {
             controller_ = std::make_shared<NonlinearAttitudeControl>(attctrl_tau);
         }
     } else {
-        controller_ = std::make_shared<JerkTrackingControl>();
+//        controller_ = std::make_shared<JerkTrackingControl>();
     }
 
 
@@ -142,6 +143,7 @@ void geometricCtrl::flattargetCallback(const controller_msgs::msg::FlatTarget::U
         targetSnap_ = Eigen::Vector3d::Zero();
 
     } else if (msg->type_mask == 2) {
+        feedthrough_enable_ = true;
         targetAcc_ = toEigen(msg->acceleration);
         targetJerk_ = Eigen::Vector3d::Zero();
         targetSnap_ = Eigen::Vector3d::Zero();
@@ -222,8 +224,10 @@ void geometricCtrl::mavtratesCallback(const px4_msgs::msg::VehicleAngularVelocit
 }
 
 void geometricCtrl::cmdloopCallback() {
+    // TODO: 修改实机程序
     if (current_state_.nav_state == px4_msgs::msg::VehicleStatus::NAVIGATION_STATE_OFFBOARD) {
         if (current_state_.arming_state != px4_msgs::msg::VehicleStatus::ARMING_STATE_ARMED) {
+            this->publish_vehicle_command(px4_msgs::msg::VehicleCommand::VEHICLE_CMD_DO_SET_MODE, 1, 6);
             this->arm();
             RCLCPP_INFO_STREAM(this->get_logger(), "Offboard enabled");
         } else {
@@ -238,6 +242,7 @@ void geometricCtrl::cmdloopCallback() {
             computeBodyRateCmd(cmdBodyRate_, desired_acc);
             pubReferencePose(targetPos_, q_des);
             pubRateCommands(cmdBodyRate_);
+//            std::cout << "desired_position:" << targetPos_.z() << std::endl;
             appendPoseHistory();
             pubPoseHistory();
         }
@@ -248,6 +253,7 @@ void geometricCtrl::cmdloopCallback() {
         RCLCPP_INFO_STREAM(this->get_logger(), "Offboard disabled");
     }
 }
+
 
 void geometricCtrl::DeclareParams() {
     // Declare parameters that can be modified via launch file or command line.
@@ -265,16 +271,17 @@ void geometricCtrl::DeclareParams() {
     this->declare_parameter<double>("attctrl_constant", 0.3);
     this->declare_parameter<double>("normalizedthrust_constant", 0.06);
     this->declare_parameter<double>("normalizedthrust_offset", 0.1);
-    this->declare_parameter<double>("Kp_x", 5.0);
-    this->declare_parameter<double>("Kp_y", 5.0);
-    this->declare_parameter<double>("Kp_z", 10.0);
-    this->declare_parameter<double>("Kv_x", 5.0);
-    this->declare_parameter<double>("Kv_y", 5.0);
-    this->declare_parameter<double>("Kv_z", 10.0);
+    this->declare_parameter<double>("Kp_x", 2.0);
+    this->declare_parameter<double>("Kp_y", 2.0);
+    this->declare_parameter<double>("Kp_z", 4.0);
+    this->declare_parameter<double>("Kv_x", 4.0);
+    this->declare_parameter<double>("Kv_y", 4.0);
+    this->declare_parameter<double>("Kv_z", 4.0);
     this->declare_parameter<int>("posehistory_window", 200);
+    this->declare_parameter<std::vector<double>>("init_pos", {0.0, 0.0, 1.0});
     this->declare_parameter<double>("init_pos_x", 0.0);
     this->declare_parameter<double>("init_pos_y", 0.0);
-    this->declare_parameter<double>("init_pos_z", 2.0);
+    this->declare_parameter<double>("init_pos_z", 1.0);
 }
 
 void geometricCtrl::GetParams() {
@@ -301,10 +308,12 @@ void geometricCtrl::GetParams() {
     this->get_parameter("Kv_y", Kvel_y_);
     this->get_parameter("Kv_z", Kvel_z_);
     this->get_parameter("posehistory_window", posehistory_window_);
+    this->get_parameter("init_pos", initTargetPos_);
     this->get_parameter("init_pos_x", initTargetPos_x_);
     this->get_parameter("init_pos_y", initTargetPos_y_);
     this->get_parameter("init_pos_z", initTargetPos_z_);
 
+    targetPos_ << initTargetPos_[0], initTargetPos_[1], initTargetPos_[2];
     targetPos_ << initTargetPos_x_, initTargetPos_y_, initTargetPos_z_;  // Initial Position
     targetVel_ << 0.0, 0.0, 0.0;
     mavPos_ << 0.0, 0.0, 0.0;
@@ -320,7 +329,7 @@ void geometricCtrl::GetParams() {
             controller_ = std::make_shared<NonlinearAttitudeControl>(attctrl_tau);
         }
     } else {
-        controller_ = std::make_shared<JerkTrackingControl>();
+//        controller_ = std::make_shared<JerkTrackingControl>();
     }
 }
 
@@ -389,11 +398,16 @@ void geometricCtrl::on_parameter_event_callback(const rcl_interfaces::msg::Param
         } else if (name == "init_pos_z") {
             initTargetPos_z_ = value.double_value;
             RCLCPP_INFO(this->get_logger(), "Reconfigure request : init_pos_z  = %.2f  ", value.double_value);
+        } else if (name == "init_pos") {
+            initTargetPos_ = value.double_array_value;
+            RCLCPP_INFO(this->get_logger(), "Reconfigure request : init_pos  = %.2f  ", value.double_value);
         }
 
         Kpos_ << -Kpos_x_, -Kpos_y_, -Kpos_z_;
         Kvel_ << -Kvel_x_, -Kvel_y_, -Kvel_z_;
         targetPos_ << initTargetPos_x_, initTargetPos_y_, initTargetPos_z_;
+        targetPos_ << initTargetPos_[0], initTargetPos_[1], initTargetPos_[2];
+        mavYaw_ = initTargetPos_[3];
     }
 }
 
@@ -481,7 +495,8 @@ void geometricCtrl::publish_trajectory_setpoint(float x, float y, float z, float
 /*
  * @itr_wh Publish desired 
  */
-void geometricCtrl::pubReferencePose(const Eigen::Vector3d &target_position, const Eigen::Vector4d &target_attitude) {
+void
+geometricCtrl::pubReferencePose(const Eigen::Vector3d &target_position, const Eigen::Vector4d &target_attitude) {
     geometry_msgs::msg::PoseStamped msg;
 
     msg.header.stamp = this->get_clock()->now();
@@ -586,12 +601,13 @@ void geometricCtrl::computeBodyRateCmd(Eigen::Vector4d &bodyrate_cmd, const Eige
     bodyrate_cmd(3) =
             std::max(0.0, std::min(1.0, norm_thrust_const_ * thrust_command +
                                         norm_thrust_offset_));  // Calculate thrustcontroller_->getDesiredThrust()(3);
-    std::cout << "thrust:" << bodyrate_cmd(3) << std::endl;
+//    std::cout << "thrust:" << bodyrate_cmd(3) << std::endl;
 }
 
 Eigen::Vector3d geometricCtrl::poscontroller(const Eigen::Vector3d &pos_error, const Eigen::Vector3d &vel_error) {
     Eigen::Vector3d a_fb =
-            Kpos_.asDiagonal() * pos_error + Kvel_.asDiagonal() * vel_error;  // feedforward term for trajectory error
+            Kpos_.asDiagonal() * pos_error +
+            Kvel_.asDiagonal() * vel_error;  // feedforward term for trajectory error
 
     if (a_fb.norm() > max_fb_acc_)
         a_fb = (max_fb_acc_ / a_fb.norm()) * a_fb;  // Clip acceleration if reference is too large
@@ -614,3 +630,4 @@ Eigen::Vector4d geometricCtrl::acc2quaternion(const Eigen::Vector3d &vector_acc,
     quat = rot2Quaternion(rotmat);
     return quat;
 }
+
